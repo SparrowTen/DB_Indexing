@@ -1,6 +1,9 @@
 # DB_Indexing
 以選課資料為基礎，實作 indexing 機制進行選課查詢。
 
+## 題目說明
+![](./qs.png)
+
 ## 設定環境
 
 ### Vscode Python 虛擬環境
