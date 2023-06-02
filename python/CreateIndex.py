@@ -50,7 +50,8 @@ if __name__ == '__main__':
         seq_array = block.getSeqIndex(raw_array)
         mergedBlock = np.concatenate((mergedBlock, seq_array))
         print('Block ' + str(i) + ' finished')
-    mergedBlock = np.argsort(mergedBlock[:, 0])
+    mergedBlock = np.sort(mergedBlock, axis=0)
+    print(mergedBlock)
     with open (block.workspace + '/index/DB_student_cls_SeqIndex.csv', 'w', encoding='utf-8', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(mergedBlock)
