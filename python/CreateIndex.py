@@ -7,31 +7,50 @@
 
 import os
 import csv
+import numpy as np
 
 class Block:
     def __init__(self, filename):
-        self.blockname = filename
+        self.filename = filename
+        self.blockname = filename.split('.')[0]
         self.workspace = os.path.dirname(__file__).split('python')[0]
     
     def getStudentID(self):
         student_id_list = []
-        with open(self.workspace + '/repository/' + self.blockname, 'r', encoding='utf-8') as csvfile:
+        with open(self.workspace + '/repository/' + self.filename, 'r', encoding='utf-8') as csvfile:
             rows = csv.reader(csvfile)
             for row in rows:
-                student_id_list.append(row[0])
+                if row[0][0] == 'D':
+                    student_id_list.append(row[0])
         # set 去除重複
-        return set(student_id_list)
-    
-    def add_seqIndex(self, data):
-        pass
+        # return set(student_id_list)
         
+        # numpy sort
+        return np.array(student_id_list)
+    
+    def getSeqIndex(self, data):
+        array = np.sort(data)
+        args = np.argsort(data)
+        output = []
+        for i in range(len(array)):
+            output.append([array[i], self.blockname + '_' + str(args[i])])
+        return output
     
 if __name__ == '__main__':
-    workspace = os.path.dirname(__file__).split('python')[0] + '/repository'
+    workspace = os.path.dirname(__file__).split('python')[0] + '/repository/'
     files = os.listdir(workspace)
-    block = Block(files[0])
-    print(block.getStudentID())
-    
-    # for file in files:
-    #     block = Block(file)
-        
+    # print(files)
+    # print('Total: ' + str(len(files)) + ' files')
+    # os._exit(0)
+    mergedBlock = np.array([['', '']])
+    for i in range(len(files)):
+        file = files[i]
+        block = Block(file)
+        raw_array = block.getStudentID()
+        seq_array = block.getSeqIndex(raw_array)
+        mergedBlock = np.concatenate((mergedBlock, seq_array))
+        print('Block ' + str(i) + ' finished')
+    mergedBlock = np.argsort(mergedBlock[:, 0])
+    with open (block.workspace + '/index/DB_student_cls_SeqIndex.csv', 'w', encoding='utf-8', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(mergedBlock)
