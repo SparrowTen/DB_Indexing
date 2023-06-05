@@ -1,9 +1,11 @@
 import csv
 import os
+import time
 
 print ('請輸入學號：')
 student_id = input()
 
+start = time.process_time()
 workspace = os.path.dirname(__file__).split('python')[0]
 dir = '\\seq_index_block\\'
 
@@ -24,3 +26,6 @@ for index in range(len(index_list)):
     with open (workspace + '\\raw_block\\block' + block + '.csv', 'r', encoding='utf-8') as csvfile:
         raw_repo = list(csv.reader(csvfile))
         print (raw_repo[int(row)])
+end = time.process_time()
+
+print ('執行時間：' + str(end - start) + ' 秒')
