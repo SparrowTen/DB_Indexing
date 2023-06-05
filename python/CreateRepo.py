@@ -11,20 +11,21 @@ import os
 import csv
 
 class Repository:
-    def __init__(self, filename):
+    def __init__(self, filename, dir):
         self.filename = filename
+        self.dir = '/' + dir + '/'
         self.block_count = 0
         self.workspace = os.path.dirname(__file__).split('python')[0]
-        if not os.path.exists(self.workspace + '/data/' + filename):
+        if not os.path.exists(self.workspace + filename):
             print('錯誤! 沒有該檔案')
             os._exit(0)
         
-        # 創建 repository 資料夾
-        if not os.path.exists(self.workspace + '/repository'):
-            os.mkdir(self.workspace + '/repository')
+        # 創建 block 資料夾
+        if not os.path.exists(self.workspace + dir):
+            os.mkdir(self.workspace + dir)
 
     def getlength(self):
-        with open(self.workspace + '/data/' + self.filename, 'r', encoding='utf-8') as csvfile:
+        with open(self.workspace + self.filename, 'r', encoding='utf-8') as csvfile:
             raw_data = csv.reader(csvfile)
             self.length = len(list(raw_data))
         return self.length
@@ -37,7 +38,7 @@ class Repository:
         block_index = 0
         buffer = 0
         data = []
-        with open(self.workspace + '/data/' + self.filename, 'r', encoding='utf-8') as csvfile:
+        with open(self.workspace + self.filename, 'r', encoding='utf-8') as csvfile:
             rows = csv.reader(csvfile)
             for row in rows:
                 buffer += len(str(row).encode('utf-8'))
@@ -47,9 +48,9 @@ class Repository:
                     buffer = 0
                     data = []
                 data.append(row)
-            
+    
     def create_file(self, filename, data):
-        with open(self.workspace + '/repository/' + filename, 'w', newline='', encoding='utf-8') as csvfile:
+        with open(self.workspace + self.dir + filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             for row in data:
                 writer.writerow(row)
@@ -57,9 +58,12 @@ class Repository:
         self.block_count += 1
     
 if __name__ == '__main__':
-    print('請輸入檔案名稱')
+    print('請輸入來源檔案路徑')
     filename = input()
-    r = Repository(filename)
+    print('請輸入輸出檔案資料夾名稱')
+    dir = input()
+    r = Repository(filename, dir)
+    
     print('資料總共' + str(r.getlength()) + '筆')
     print('請輸入每個 block 的上限大小 (KB)')
     size_limit = int(input())
