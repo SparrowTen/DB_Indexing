@@ -54,44 +54,38 @@ if __name__ == '__main__':
             seq_array = block.getSeqIndex(raw_array)
             mergedBlock = np.concatenate((mergedBlock, seq_array))
             create_block_process.update(1)
-            # print('Block ' + str(i) + ' finished')
+
+        # 讀取原始 seq_index 檔案
+        seq_index = mergedBlock
         
-        # 寫入原始 seq_index 檔案
-        # with open (workspace + '/index/DB_student_cls_SeqIndex.csv', 'w', encoding='utf-8', newline='') as csvfile:
-        #     writer = csv.writer(csvfile)
-        #     writer.writerows(mergedBlock)
-    
-    # 讀取原始 seq_index 檔案
-    seq_index = mergedBlock
-    # with open (workspace + '/index/DB_student_cls_SeqIndex.csv', 'r', encoding='utf-8') as csvfile:
-    #     seq_index = np.array(list(csv.reader(csvfile)))
-    
-    # 取得不重複的學號
-    student_id_arr = set(seq_index[:, 0])
-    student_id_arr = np.array(list(student_id_arr))
-    student_id_arr = np.sort(student_id_arr)
-    
-    # 創建進度條
-    simple_process = tqdm(total=len(student_id_arr), desc='簡化 seq_index 檔案', ncols=100)
-    
-    # 寫入精簡化 seq_index 檔案
-    with open (workspace + '/index/seq_student_cls.csv', 'w', encoding='utf-8', newline='') as csvfile:
-        writer = csv.writer(csvfile)
+        # 取得不重複的學號
+        student_id_arr = set(seq_index[:, 0])
+        student_id_arr = np.array(list(student_id_arr))
+        student_id_arr = np.sort(student_id_arr)
         
-        # 遍歷所有學號
-        for i in range(len(student_id_arr)):
-            student_id = student_id_arr[i]
-            student_all_class_list = []
-            all_class_index = np.where(seq_index[:,:] == student_id)[0].tolist()
+        # 創建進度條
+        simple_process = tqdm(total=len(student_id_arr), desc='簡化 seq_index 檔案', ncols=100)
+        
+        # 寫入精簡化 seq_index 檔案
+        with open (workspace + '/index/seq_student_cls.csv', 'w', encoding='utf-8', newline='') as csvfile:
+            writer = csv.writer(csvfile)
             
-            for j in range(len(all_class_index)):
-                student_all_class_list.append(seq_index[all_class_index[j]][1])
-            student_all_class_list = np.sort(student_all_class_list)
-            
-            temp = []
-            for j in range(len(student_all_class_list)):
-                temp.append([student_id, student_all_class_list[j]])
-            writer.writerows(temp)
-            
-            # 更新進度條
-            simple_process.update(1)
+            # 遍歷所有學號
+            for i in range(len(student_id_arr)):
+                student_id = student_id_arr[i]
+                student_all_class_list = []
+                all_class_index = np.where(seq_index[:,:] == student_id)[0].tolist()
+                
+                # 遍歷所有課程id
+                for j in range(len(all_class_index)):
+                    student_all_class_list.append(seq_index[all_class_index[j]][1])
+                student_all_class_list = np.sort(student_all_class_list)
+                
+                # 寫入檔案
+                temp = []
+                for j in range(len(student_all_class_list)):
+                    temp.append([student_id, student_all_class_list[j]])
+                writer.writerows(temp)
+                
+                # 更新進度條
+                simple_process.update(1)
