@@ -13,7 +13,7 @@ import csv
 class Repository:
     def __init__(self, filename, dir):
         self.filename = filename
-        self.dir = '/' + dir + '/'
+        self.dir = '\\repository\\' + dir + '\\'
         self.block_count = 0
         self.workspace = os.path.dirname(__file__).split('python')[0]
         if not os.path.exists(self.workspace + filename):
