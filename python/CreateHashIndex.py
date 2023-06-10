@@ -1,6 +1,6 @@
 import os
 import csv
-import pprint
+from pprint import pprint
 from tqdm import tqdm
 
 class HashIndex:
@@ -72,22 +72,19 @@ class HashIndex:
             index += 1
         return index
 
-def search(key, data):
-    index = hash_index.hashfunc(key, key_set)
-    return data[index]
-
-def search(key, key_set, data):
-    index = hash_index.hashfunc(key, key_set)
-    if data[index]['key'] == key:
-        return data[index]
+def search(key, key_set, buckets:dict):
+    index = str(hash_index.hashfunc(key, key_set))
+    # print(index, buckets.get(str(index))['key'])
+    if buckets.get(index)['key'] == key:
+        return buckets[index]['value']
     else:
         while True:
-            if data[index]['key'] != key:
-                if data[index]['pointer'] == None:
+            if buckets.get(index)['key'] != key:
+                if buckets.get(index)['pointer'] == None:
                     return None
-                index = data[index]['pointer']
+                index = buckets[index]['pointer']
             else:
-                return data[index]
+                return buckets[index]['value']
 
 if __name__ == '__main__':
     hash_index = HashIndex()
@@ -112,5 +109,14 @@ if __name__ == '__main__':
             key_set.append(row)
     
     with open(hash_index.workspace + '\\index\\' + 'hash_index.csv', 'r', encoding='utf-8') as csvfile:
-        data = csv.reader(csvfile)
-        print(search('2148', key_set, data))
+        raw_csv = csv.reader(csvfile)
+        buckets = {}
+        for row in raw_csv:
+            bucket = {}
+            bucket['key'] = row[1]
+            bucket['value'] = row[2]
+            bucket['pointer'] = row[3]
+            buckets[row[0]] = bucket
+        result = search('2132', key_set, buckets)
+        print(result)
+        print(f'結果共有 {len(buckets)} 位學生')
