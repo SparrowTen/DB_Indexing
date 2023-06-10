@@ -33,7 +33,7 @@ class Repository:
     def getBlockCount(self):
         return self.block_count
     
-    def split(self, size_limit):
+    def split(self, size_limit, filename=None):
         size_limit = size_limit * 1024
         block_index = 0
         buffer = 0
