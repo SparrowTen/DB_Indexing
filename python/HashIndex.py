@@ -1,5 +1,6 @@
 import os
 import csv
+import json
 from pprint import pprint
 from tqdm import tqdm
 
@@ -24,14 +25,19 @@ class HashIndex:
         return key_set
     
     def addValue(self, key_set, key_col=0):
+        # 資料扁平化
         raw_blocks = os.listdir(self.source)
         process = tqdm(total=len(raw_blocks), desc='key -> value', ncols=100)
         bucket = {}
         for raw_block in raw_blocks:
             with open(self.source + raw_block, 'r', encoding='utf-8') as csvfile:
                 raw_repo = list(csv.reader(csvfile))
-                own_value = []
                 for key in key_set:
+                    if bucket.get(key) == None:
+                        own_value = []
+                    else:
+                        own_value = bucket[key]
+                    
                     for row in raw_repo:
                         if key == row[key_col]:
                             own_value.append(row[0])
@@ -40,11 +46,12 @@ class HashIndex:
         return bucket
     
     def hashfunc(self, key, key_set):
+        # load factor = 1, suggest 0.8
         return int(key) % len(key_set)
     
     def addHashIndex(self, key_value):
         blocks = {}
-        key_set = list(key_value.keys())
+        key_set = key_value.keys()
         for key in key_set:
             hash_index = self.hashfunc(key, key_set)
             bucket = {}
@@ -71,20 +78,28 @@ class HashIndex:
                 break
             index += 1
         return index
+    
+def getKeySet():
+    key_set = []
+    with open(hash_index.workspace + '\\index\\' + 'hash_key.csv', 'r', encoding='utf-8') as csvfile:
+        data = csv.reader(csvfile)
+        for row in data:
+            key_set.append(row[0])
+    return key_set
 
-def search(key, key_set, buckets:dict):
+def search(key, key_set):
     index = str(hash_index.hashfunc(key, key_set))
-    # print(index, buckets.get(str(index))['key'])
-    if buckets.get(index)['key'] == key:
-        return buckets[index]['value']
-    else:
-        while True:
-            if buckets.get(index)['key'] != key:
-                if buckets.get(index)['pointer'] == None:
-                    return None
-                index = buckets[index]['pointer']
+    while True:
+        key = str(key)
+        filename = f'block{index}.json'
+        with open(hash_index.workspace + hash_index.dir + filename) as jsonfile:
+            bucket = json.load(jsonfile)
+            if bucket['key'] == key:
+                return bucket['value']
+            elif bucket['pointer'] != None:
+                index = bucket['pointer']
             else:
-                return buckets[index]['value']
+                return None
 
 if __name__ == '__main__':
     hash_index = HashIndex()
@@ -94,6 +109,9 @@ if __name__ == '__main__':
             writer = csv.writer(csvfile)
             for key in key_set:
                 writer.writerow([key])
+    
+    key_set = getKeySet()
+    
     if not os.path.exists(hash_index.workspace + '\\index\\' + 'hash_index.csv'):
         key_value = hash_index.addValue(key_set, key_col=1)
         blocks = hash_index.addHashIndex(key_value)
@@ -101,22 +119,14 @@ if __name__ == '__main__':
             writer = csv.writer(csvfile)
             for index in blocks:
                 writer.writerow([index, blocks[index]['key'], blocks[index]['value'], blocks[index]['pointer']])
+        
+        for index in blocks:
+            filename = f'block{index}.json'
+            with open(hash_index.workspace + hash_index.dir + filename, 'w', encoding='utf-8') as jsonfile:
+                json.dump(blocks[index], jsonfile, indent=4, ensure_ascii=False)
     
-    key_set = []
-    with open(hash_index.workspace + '\\index\\' + 'hash_key.csv', 'r', encoding='utf-8') as csvfile:
-        data = csv.reader(csvfile)
-        for row in data:
-            key_set.append(row)
+    key = 2132
     
-    with open(hash_index.workspace + '\\index\\' + 'hash_index.csv', 'r', encoding='utf-8') as csvfile:
-        raw_csv = csv.reader(csvfile)
-        buckets = {}
-        for row in raw_csv:
-            bucket = {}
-            bucket['key'] = row[1]
-            bucket['value'] = row[2]
-            bucket['pointer'] = row[3]
-            buckets[row[0]] = bucket
-        result = search('2132', key_set, buckets)
-        print(result)
-        print(f'結果共有 {len(buckets)} 位學生')
+    result = search(key, key_set)
+    print(result)
+    print(f'共有 {len(result)} 選修此課程')
