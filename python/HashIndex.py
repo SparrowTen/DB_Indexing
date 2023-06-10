@@ -125,8 +125,8 @@ if __name__ == '__main__':
             with open(hash_index.workspace + hash_index.dir + filename, 'w', encoding='utf-8') as jsonfile:
                 json.dump(blocks[index], jsonfile, indent=4, ensure_ascii=False)
     
-    key = 2132
-    
+    print('請輸入學號:')
+    key = input()
     result = search(key, key_set)
     print(result)
     print(f'共有 {len(result)} 選修此課程')
