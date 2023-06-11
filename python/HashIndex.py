@@ -1,14 +1,15 @@
 import os
 import csv
 import json
+import sys
 from pprint import pprint
 from tqdm import tqdm
 
-class HashIndex:
+class HashBucket:
     def __init__(self, source='repository\\raw_block\\') -> None:
         self.workspace = os.path.dirname(__file__).split('python')[0]
         self.source = self.workspace + source
-        self.dir = '\\repository\\hash_index_block\\'
+        self.dir = 'repository\\hash_index_block\\'
         if not os.path.exists(self.workspace + self.dir):
             os.makedirs(self.workspace + self.dir)
     
@@ -45,88 +46,173 @@ class HashIndex:
             process.update(1)
         return bucket
     
-    def hashfunc(self, key, key_set):
+    def hashfunc(self, key, hash_space):
         # load factor = 1, suggest 0.8
-        return int(key) % len(key_set)
+        return int(key) % hash_space
     
-    def addHashIndex(self, key_value):
+    def addHashIndex(self, key_value, hash_space):
+        # 建立 hash index
         blocks = {}
         key_set = key_value.keys()
+        process = tqdm(total=len(key_set), desc='key -> hash_index', ncols=100)
         for key in key_set:
-            hash_index = self.hashfunc(key, key_set)
-            bucket = {}
-            bucket['key'] = key
-            bucket['value'] = key_value[key]
-            bucket['pointer'] = None
+            hash_index = self.hashfunc(key, hash_space)
+            # key, value, pointer
+            bucket = [key, key_value[key], None]
             if blocks.get(hash_index) != None:
-                linked_index = self.fixConflict(hash_index, blocks)
-                blocks[hash_index]['pointer'] = linked_index
+                print('conflict')
+                linked_index = self.fixConflict(hash_index, hash_space)
+                blocks[hash_index][2] = linked_index
                 blocks[linked_index] = bucket
-            elif blocks.get(hash_index) == None:
+            else: 
                 blocks[hash_index] = bucket
+            process.update(1)
         return blocks
     
-    def fixConflict(self, index, blocks:dict):
+    def fixConflict(self, index, hash_space):
         # 平行探測 [+-1, +-2, +-3, ...]
-        new_index = 1
+        # 線性探測 [1, 2, 3, ...]
+        hash_indexs = []
+        index = int(index)
+        with open(self.workspace + '\\index\\' + 'hash_index.csv', 'r', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                hash_indexs.append(str(row[0]))
+
         while True:
-            if blocks.get(index + new_index) == None:
-                index = index + new_index
-                break
-            if blocks.get(index - new_index) == None:
-                index = index - new_index
-                break
             index += 1
+            if index >= hash_space:
+                index = 0
+            
+            if str(index) not in hash_indexs:
+                break
+            
+        with open(self.workspace + '\\index\\' + 'hash_index.csv', 'a', encoding='utf-8', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow([index])
+        
+        if index == '':
+            print('hash index is full')
+            
+        
         return index
     
 def getKeySet():
     key_set = []
-    with open(hash_index.workspace + '\\index\\' + 'hash_key.csv', 'r', encoding='utf-8') as csvfile:
+    with open(hash_bucket.workspace + '\\index\\' + 'hash_key.csv', 'r', encoding='utf-8') as csvfile:
         data = csv.reader(csvfile)
         for row in data:
             key_set.append(row[0])
     return key_set
 
 def search(key, key_set):
-    index = str(hash_index.hashfunc(key, key_set))
+    index = str(hash_bucket.hashfunc(key, key_set))
+    result = []
     while True:
         key = str(key)
-        filename = f'block{index}.json'
-        with open(hash_index.workspace + hash_index.dir + filename) as jsonfile:
-            bucket = json.load(jsonfile)
-            if bucket['key'] == key:
-                return bucket['value']
-            elif bucket['pointer'] != None:
-                index = bucket['pointer']
+        filename = f'block{index}.csv'
+        with open(hash_bucket.workspace + hash_bucket.dir + filename) as csvfile:
+            reader = csv.reader(csvfile)
+            for bucket in reader:
+                if bucket[0] == key:
+                    result.append(bucket[1])
+            if bucket[2] == '':
+                return result
             else:
-                return None
+                index = bucket[2]
 
 if __name__ == '__main__':
-    hash_index = HashIndex()
-    if not os.path.exists(hash_index.workspace + '\\index\\' + 'hash_key.csv'):
-        key_set = hash_index.getKeySet(key_col=1)
-        with open(hash_index.workspace + '\\index\\' + 'hash_key.csv', 'w', encoding='utf-8', newline='') as csvfile:
+    hash_bucket = HashBucket()
+    
+    key_set = getKeySet()
+    
+    hash_space = len(key_set) * 6
+    
+    # 取得所有 key
+    if not os.path.exists(hash_bucket.workspace + '\\index\\' + 'hash_key.csv'):
+        key_set = hash_bucket.getKeySet(key_col=1)
+        with open(hash_bucket.workspace + '\\index\\' + 'hash_key.csv', 'w', encoding='utf-8', newline='') as csvfile:
             writer = csv.writer(csvfile)
             for key in key_set:
                 writer.writerow([key])
     
-    key_set = getKeySet()
-    
-    if not os.path.exists(hash_index.workspace + '\\index\\' + 'hash_index.csv'):
-        key_value = hash_index.addValue(key_set, key_col=1)
-        blocks = hash_index.addHashIndex(key_value)
-        with open(hash_index.workspace + '\\index\\' + 'hash_index.csv', 'w', encoding='utf-8', newline='') as csvfile:
+    # 建立 hash_index_block
+    if len(os.listdir(hash_bucket.workspace + hash_bucket.dir)) == 0:
+        key_value = hash_bucket.addValue(key_set, key_col=1)
+        blocks = hash_bucket.addHashIndex(key_value, hash_space)
+        
+        # 創建 bucket
+        for index in blocks:
+            filename = f'block{index}.csv'
+            with open(hash_bucket.workspace + hash_bucket.dir + filename, 'w', encoding='utf-8', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                for value in blocks[index][1]:
+                    writer.writerow([blocks[index][0], value, blocks[index][2]])
+        
+        # 創建 hash_index
+        hash_indexs = []
+        with open(hash_bucket.workspace + '\\index\\' + 'hash_index.csv', 'w', encoding='utf-8', newline='') as csvfile:
             writer = csv.writer(csvfile)
             for index in blocks:
-                writer.writerow([index, blocks[index]['key'], blocks[index]['value'], blocks[index]['pointer']])
+                hash_indexs.append(index)
+                writer.writerow([index])
         
-        for index in blocks:
-            filename = f'block{index}.json'
-            with open(hash_index.workspace + hash_index.dir + filename, 'w', encoding='utf-8') as jsonfile:
-                json.dump(blocks[index], jsonfile, indent=4, ensure_ascii=False)
-    
+        # 分割 bucket 至資料限制大小
+        size_limit = 8 * 1024
+        buckets = os.listdir(hash_bucket.workspace + hash_bucket.dir)
+        process = tqdm(total=len(buckets), desc='split bucket', ncols=100)
+        
+        for bucket in buckets:
+            size = os.path.getsize(hash_bucket.workspace + hash_bucket.dir + bucket)
+            if size > size_limit:
+                # 讀取未分割的 bucket
+                raw_bucket = []
+                with open(hash_bucket.workspace + hash_bucket.dir + bucket, 'r', encoding='utf-8') as csvfile:
+                    reader = csv.reader(csvfile)
+                    for row in reader:
+                        raw_bucket.append(row)
+                
+                index = bucket.split('.')[0].replace('block', '')
+                insert_index = hash_bucket.fixConflict(index, hash_space)
+                pointer = raw_bucket[0][2]
+                
+                # 刪除未分割的 bucket
+                os.remove(hash_bucket.workspace + hash_bucket.dir + bucket)
+                
+                bucket = f'block{index}.csv'
+                
+                # 分割 bucket
+                buffer = 0
+                temp = []
+                for row in raw_bucket:
+                    buffer += len(str(row).encode('utf-8'))
+                    if buffer > size_limit:
+                        with open(hash_bucket.workspace + hash_bucket.dir + bucket, 'w', encoding='utf-8', newline='') as csvfile:
+                            writer = csv.writer(csvfile)
+                            for row in temp:
+                                row[2] = insert_index
+                                writer.writerow(row)
+                        index = insert_index
+                        insert_index = hash_bucket.fixConflict(index, hash_space)
+                        buffer = 0
+                        temp = []
+                        bucket = f'block{index}.csv'
+                        # print(bucket)
+                    temp.append(row)
+                
+                with open(hash_bucket.workspace + hash_bucket.dir + bucket, 'w', encoding='utf-8', newline='') as csvfile:
+                    writer = csv.writer(csvfile)
+                    for row in temp:
+                        row[2] = pointer
+                        writer.writerow(row)
+                
+            process.update(1)
+        
+        print(f'load factor: {len(hash_indexs) / hash_space}')
+        
+
     print('請輸入學號:')
     key = input()
-    result = search(key, key_set)
+    result = search(key, hash_space)
     print(result)
     print(f'共有 {len(result)} 選修此課程')
